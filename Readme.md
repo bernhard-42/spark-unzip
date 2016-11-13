@@ -38,7 +38,7 @@ Test data can be created with `data/create-data.sh`
 
 ---
 
-#### Six zip files containing XML records are placed below /tmp/zip
+#### Three zip files each containing three files with XML records are placed below /tmp/zip
 
 _Input:_
 
