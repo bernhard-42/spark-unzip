@@ -1,1 +1,4 @@
 .DS_Store
+data/raw
+data/gzip
+data/zip

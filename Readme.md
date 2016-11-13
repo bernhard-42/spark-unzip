@@ -21,7 +21,7 @@ sc.version
 _Result:_
 
 ```
-res29: String = 1.6.2
+res47: String = 1.6.2
 
 ```
 
@@ -31,7 +31,9 @@ res29: String = 1.6.2
 
 ZIP compression format is not splittable and there is no default input format defined in Hadoop. To read ZIP files, Hadoop needs to be informed that it this file type is not splittable and needs an appropriate record reader, see [Hadoop: Processing ZIP files in Map/Reduce](http://cutler.io/2012/07/hadoop-processing-zip-files-in-mapreduce/).
 
-In order to work with ZIP files in Zeppelin, follow the installation instructions in the appendix of this notebook
+In order to work with ZIP files in Zeppelin, follow the installation instructions in the `Appendix` of this notebook
+
+Test data can be created with `data/create-data.sh`
 
 
 ---
@@ -46,8 +48,14 @@ _Input:_
 echo "Folder:"
 hdfs dfs -ls /tmp/zip
 echo " "
+
+echo "ZIP Files"
+rm -f /tmp/l.zip
+hdfs dfs -get /tmp/zip/logfiles1.zip /tmp/l.zip
+unzip -l /tmp/l.zip
+echo " "
+
 echo "XML records:"
-hdfs dfs -get /tmp/zip/logfile_1.zip /tmp/l.zip
 unzip -p /tmp/l.zip | head -n 3
 ```
 
@@ -56,18 +64,25 @@ _Result:_
 
 ```
 Folder:
-Found 6 items
--rw-r--r--   3 bernhard hdfs       3764 2016-11-11 17:55 /tmp/zip/logfile_1.zip
--rw-r--r--   3 bernhard hdfs       3833 2016-11-11 17:55 /tmp/zip/logfile_2.zip
--rw-r--r--   3 bernhard hdfs       3796 2016-11-11 17:55 /tmp/zip/logfile_3.zip
--rw-r--r--   3 bernhard hdfs       3757 2016-11-11 17:55 /tmp/zip/logfile_4.zip
--rw-r--r--   3 bernhard hdfs       3841 2016-11-11 17:55 /tmp/zip/logfile_5.zip
--rw-r--r--   3 bernhard hdfs       3712 2016-11-11 17:55 /tmp/zip/logfile_6.zip
+Found 3 items
+-rw-r--r--   3 bernhard hdfs     712729 2016-11-13 19:43 /tmp/zip/logfiles1.zip
+-rw-r--r--   3 bernhard hdfs     713130 2016-11-13 19:43 /tmp/zip/logfiles2.zip
+-rw-r--r--   3 bernhard hdfs     711966 2016-11-13 19:43 /tmp/zip/logfiles3.zip
+ 
+ZIP Files
+Archive:  /tmp/l.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+  2313784  2016-11-13 19:37   logfile_0
+  2314604  2016-11-13 19:37   logfile_1
+  2313592  2016-11-13 19:37   logfile_2
+---------                     -------
+  6941980                     3 files
  
 XML records:
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Heinz Dieter</first_name><name type="str">Antonino Döhn</name></name><address type="dict"><city type="str">Iserlohn</city><street type="str">Erich-Roskoth-Straße</street><country type="str">Deutschland</country></address></root>
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Marta</first_name><name type="str">Hedy Kobelt</name></name><address type="dict"><city type="str">Jena</city><street type="str">Slavko-Karge-Gasse</street><country type="str">Deutschland</country></address></root>
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Amalia</first_name><name type="str">Sibylle Jacobi Jäckel</name></name><address type="dict"><city type="str">Böblingen</city><street type="str">Teresa-Meister-Allee</street><country type="str">Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Constance</first_name><last_name>Schaaf</last_name></name><address><city>Neubrandenburg</city><street>Carmine-Löchel-Weg</street><country>Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Rosalie</first_name><last_name>Lorch</last_name></name><address><city>Rastatt</city><street>Schachtring</street><country>Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Max</first_name><last_name>Radisch</last_name></name><address><city>Nordhausen</city><street>Ditschlerinweg</street><country>Deutschland</country></address></root>
 
 ```
 
@@ -121,17 +136,17 @@ _Input:_
 
 ```scala
 %spark
-case class Person(first_name:String, name:String, street:String, city:String, country:String)
+case class Person(first_name:String, last_name:String, street:String, city:String, country:String)
 
 def parseXML(xmlStr: String) = {
     val xml = XML.loadString(xmlStr)
     val first_name = (xml \ "name" \ "first_name").text
-    val name = (xml \ "name" \ "name").text
+    val last_name = (xml \ "name" \ "last_name").text
     val street = (xml \ "address" \ "street").text
     val city = (xml \ "address" \ "city").text
     val country = (xml \ "address" \ "country").text
 
-    Person(first_name, name, street, city, country)
+    Person(first_name, last_name, street, city, country)
 }
 ```
 
@@ -163,7 +178,7 @@ val zipFileRDD = sc.newAPIHadoopFile("/tmp/zip", classOf[ZipFileInputFormat],
 _Result:_
 
 ```
-zipFileRDD: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[40] at map at <console>:46
+zipFileRDD: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[62] at map at <console>:53
 
 ```
 
@@ -178,13 +193,15 @@ _Input:_
 val df = zipFileRDD.flatMap { _.split("\n") }
                    .map(parseXML)
                    .toDF
+df.count
 ```
 
 
 _Result:_
 
 ```
-df: org.apache.spark.sql.DataFrame = [first_name: string, name: string, street: string, city: string, country: string]
+df: org.apache.spark.sql.DataFrame = [first_name: string, last_name: string, street: string, city: string, country: string]
+res53: Long = 90000
 
 ```
 
@@ -203,20 +220,20 @@ df.show(10)
 _Result:_
 
 ```
-+------------+--------------------+--------------------+----------+-----------+
-|  first_name|                name|              street|      city|    country|
-+------------+--------------------+--------------------+----------+-----------+
-|Heinz Dieter|       Antonino Döhn|Erich-Roskoth-Straße|  Iserlohn|Deutschland|
-|       Marta|         Hedy Kobelt|  Slavko-Karge-Gasse|      Jena|Deutschland|
-|      Amalia|Sibylle Jacobi Jä...|Teresa-Meister-Allee| Böblingen|Deutschland|
-|      Gerwin|   Pauline Kade B.A.|  Niels-Winkler-Ring|Biedenkopf|Deutschland|
-|        Ines|Norma Binner-Margraf|           Meyerring|   Wolgast|Deutschland|
-|     Cynthia|       Emmerich Metz|  Sandy-Atzler-Allee|  Grafenau|Deutschland|
-|   Felicitas|Frau Cosima Döhn ...|Brunhilde-Naser-Ring| Gadebusch|Deutschland|
-|    Hannchen|Ulrike Bender-Sei...|Frida-Möchlichen-...|    Döbeln|Deutschland|
-|    Frithjof| Niklas Linke B.Eng.|         Lindauplatz| Sternberg|Deutschland|
-|     Chantal|Heinfried Roskoth...|Dorothee-Rosemann...|  Burgdorf|Deutschland|
-+------------+--------------------+--------------------+----------+-----------+
++----------+-----------+--------------------+--------------+-----------+
+|first_name|  last_name|              street|          city|    country|
++----------+-----------+--------------------+--------------+-----------+
+| Constance|     Schaaf|  Carmine-Löchel-Weg|Neubrandenburg|Deutschland|
+|   Rosalie|      Lorch|         Schachtring|       Rastatt|Deutschland|
+|       Max|    Radisch|      Ditschlerinweg|    Nordhausen|Deutschland|
+|     Ahmed|    Heintze|      Cichoriusgasse|        Amberg|Deutschland|
+|   Antonia|      Gunpf| Kreszentia-Bähr-Weg|     Warendorf|Deutschland|
+|     Janko|  Christoph|Jonas-Röhrdanz-Allee|    Gelnhausen|Deutschland|
+|    Ottmar|     Seidel|Ernestine-Hornich...|     Wunsiedel|Deutschland|
+|   Mattias|Wagenknecht|         Kästergasse|      Arnstadt|Deutschland|
+|    Marika|    Scholtz|       Benthinstraße|       Ilmenau|Deutschland|
+|     Jobst|      Rogge|           Zimmerweg|   Sigmaringen|Deutschland|
++----------+-----------+--------------------+--------------+-----------+
 only showing top 10 rows
 
 
@@ -251,24 +268,18 @@ hdfs dfs -ls /tmp/results/people.parquet
 _Result:_
 
 ```
-Found 7 items
--rw-r--r--   3 zeppelin hdfs          0 2016-11-13 18:08 /tmp/results/people.orc/_SUCCESS
--rw-r--r--   3 zeppelin hdfs       4036 2016-11-13 18:08 /tmp/results/people.orc/part-r-00000-465ac1ad-3a48-4b15-9601-b066af702212.orc
--rw-r--r--   3 zeppelin hdfs       4090 2016-11-13 18:08 /tmp/results/people.orc/part-r-00001-465ac1ad-3a48-4b15-9601-b066af702212.orc
--rw-r--r--   3 zeppelin hdfs       4051 2016-11-13 18:08 /tmp/results/people.orc/part-r-00002-465ac1ad-3a48-4b15-9601-b066af702212.orc
--rw-r--r--   3 zeppelin hdfs       4014 2016-11-13 18:08 /tmp/results/people.orc/part-r-00003-465ac1ad-3a48-4b15-9601-b066af702212.orc
--rw-r--r--   3 zeppelin hdfs       4125 2016-11-13 18:08 /tmp/results/people.orc/part-r-00004-465ac1ad-3a48-4b15-9601-b066af702212.orc
--rw-r--r--   3 zeppelin hdfs       4027 2016-11-13 18:08 /tmp/results/people.orc/part-r-00005-465ac1ad-3a48-4b15-9601-b066af702212.orc
-Found 9 items
--rw-r--r--   3 zeppelin hdfs          0 2016-11-13 18:08 /tmp/results/people.parquet/_SUCCESS
--rw-r--r--   3 zeppelin hdfs        538 2016-11-13 18:08 /tmp/results/people.parquet/_common_metadata
--rw-r--r--   3 zeppelin hdfs       4448 2016-11-13 18:08 /tmp/results/people.parquet/_metadata
--rw-r--r--   3 zeppelin hdfs       4913 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00000-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
--rw-r--r--   3 zeppelin hdfs       4954 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00001-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
--rw-r--r--   3 zeppelin hdfs       4933 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00002-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
--rw-r--r--   3 zeppelin hdfs       4897 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00003-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
--rw-r--r--   3 zeppelin hdfs       4957 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00004-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
--rw-r--r--   3 zeppelin hdfs       4844 2016-11-13 18:08 /tmp/results/people.parquet/part-r-00005-1b9890ba-1b08-4905-8826-911b5b6cc8b1.gz.parquet
+Found 4 items
+-rw-r--r--   3 zeppelin hdfs          0 2016-11-13 19:50 /tmp/results/people.orc/_SUCCESS
+-rw-r--r--   3 zeppelin hdfs     308634 2016-11-13 19:49 /tmp/results/people.orc/part-r-00000-b1f95464-e242-485c-8e6d-e9a927efbe4a.orc
+-rw-r--r--   3 zeppelin hdfs     308621 2016-11-13 19:49 /tmp/results/people.orc/part-r-00001-b1f95464-e242-485c-8e6d-e9a927efbe4a.orc
+-rw-r--r--   3 zeppelin hdfs     308911 2016-11-13 19:50 /tmp/results/people.orc/part-r-00002-b1f95464-e242-485c-8e6d-e9a927efbe4a.orc
+Found 6 items
+-rw-r--r--   3 zeppelin hdfs          0 2016-11-13 19:51 /tmp/results/people.parquet/_SUCCESS
+-rw-r--r--   3 zeppelin hdfs        548 2016-11-13 19:51 /tmp/results/people.parquet/_common_metadata
+-rw-r--r--   3 zeppelin hdfs       2559 2016-11-13 19:51 /tmp/results/people.parquet/_metadata
+-rw-r--r--   3 zeppelin hdfs     309015 2016-11-13 19:51 /tmp/results/people.parquet/part-r-00000-56a9dae0-b285-40e1-bf2e-2f6beb73b16d.gz.parquet
+-rw-r--r--   3 zeppelin hdfs     309185 2016-11-13 19:51 /tmp/results/people.parquet/part-r-00001-56a9dae0-b285-40e1-bf2e-2f6beb73b16d.gz.parquet
+-rw-r--r--   3 zeppelin hdfs     308872 2016-11-13 19:51 /tmp/results/people.parquet/part-r-00002-56a9dae0-b285-40e1-bf2e-2f6beb73b16d.gz.parquet
 
 ```
 
@@ -303,13 +314,13 @@ _Result:_
 
 ```
 Found 2 items
--rw-r--r--   3 zeppelin hdfs          0 2016-11-13 18:08 /tmp/results/people1.orc/_SUCCESS
--rw-r--r--   3 zeppelin hdfs      16601 2016-11-13 18:08 /tmp/results/people1.orc/part-r-00000-099f17e8-7e93-4e3a-9cba-95d8c1e013b4.orc
+-rw-r--r--   3 zeppelin hdfs          0 2016-11-13 19:54 /tmp/results/people1.orc/_SUCCESS
+-rw-r--r--   3 zeppelin hdfs     858603 2016-11-13 19:54 /tmp/results/people1.orc/part-r-00000-870982f1-bc81-47d3-8868-6e337edf300f.orc
 Found 4 items
--rw-r--r--   3 zeppelin hdfs          0 2016-11-13 18:08 /tmp/results/people1.parquet/_SUCCESS
--rw-r--r--   3 zeppelin hdfs        538 2016-11-13 18:08 /tmp/results/people1.parquet/_common_metadata
--rw-r--r--   3 zeppelin hdfs       1197 2016-11-13 18:08 /tmp/results/people1.parquet/_metadata
--rw-r--r--   3 zeppelin hdfs      18288 2016-11-13 18:08 /tmp/results/people1.parquet/part-r-00000-29a86cbd-79cb-4933-86d9-78e0fe06148c.gz.parquet
+-rw-r--r--   3 zeppelin hdfs          0 2016-11-13 19:55 /tmp/results/people1.parquet/_SUCCESS
+-rw-r--r--   3 zeppelin hdfs        548 2016-11-13 19:55 /tmp/results/people1.parquet/_common_metadata
+-rw-r--r--   3 zeppelin hdfs       1222 2016-11-13 19:55 /tmp/results/people1.parquet/_metadata
+-rw-r--r--   3 zeppelin hdfs     886734 2016-11-13 19:55 /tmp/results/people1.parquet/part-r-00000-6ef20812-6e2f-4356-9837-f15021e2f9a0.gz.parquet
 
 ```
 
@@ -347,18 +358,21 @@ _Result:_
 
 ```
 Folder:
-Found 6 items
--rw-r--r--   3 bernhard hdfs       3564 2016-11-11 18:21 /tmp/gzip/logfile_1.gz
--rw-r--r--   3 bernhard hdfs       3632 2016-11-11 18:21 /tmp/gzip/logfile_2.gz
--rw-r--r--   3 bernhard hdfs       3609 2016-11-11 18:21 /tmp/gzip/logfile_3.gz
--rw-r--r--   3 bernhard hdfs       3561 2016-11-11 18:21 /tmp/gzip/logfile_4.gz
--rw-r--r--   3 bernhard hdfs       3638 2016-11-11 18:21 /tmp/gzip/logfile_5.gz
--rw-r--r--   3 bernhard hdfs       3514 2016-11-11 18:21 /tmp/gzip/logfile_6.gz
+Found 9 items
+-rw-r--r--   3 bernhard hdfs     230579 2016-11-13 19:56 /tmp/gzip/logfile_0.gz
+-rw-r--r--   3 bernhard hdfs     231281 2016-11-13 19:56 /tmp/gzip/logfile_1.gz
+-rw-r--r--   3 bernhard hdfs     230567 2016-11-13 19:56 /tmp/gzip/logfile_2.gz
+-rw-r--r--   3 bernhard hdfs     231273 2016-11-13 19:56 /tmp/gzip/logfile_3.gz
+-rw-r--r--   3 bernhard hdfs     230518 2016-11-13 19:56 /tmp/gzip/logfile_4.gz
+-rw-r--r--   3 bernhard hdfs     231085 2016-11-13 19:56 /tmp/gzip/logfile_5.gz
+-rw-r--r--   3 bernhard hdfs     230767 2016-11-13 19:56 /tmp/gzip/logfile_6.gz
+-rw-r--r--   3 bernhard hdfs     230531 2016-11-13 19:56 /tmp/gzip/logfile_7.gz
+-rw-r--r--   3 bernhard hdfs     230467 2016-11-13 19:56 /tmp/gzip/logfile_8.gz
  
 XML records:
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Heinz Dieter</first_name><name type="str">Antonino Döhn</name></name><address type="dict"><city type="str">Iserlohn</city><street type="str">Erich-Roskoth-Straße</street><country type="str">Deutschland</country></address></root>
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Marta</first_name><name type="str">Hedy Kobelt</name></name><address type="dict"><city type="str">Jena</city><street type="str">Slavko-Karge-Gasse</street><country type="str">Deutschland</country></address></root>
-<?xml version="1.0" encoding="UTF-8" ?><root><name type="dict"><first_name type="str">Amalia</first_name><name type="str">Sibylle Jacobi Jäckel</name></name><address type="dict"><city type="str">Böblingen</city><street type="str">Teresa-Meister-Allee</street><country type="str">Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Abram</first_name><last_name>Loos</last_name></name><address><city>Mellrichstadt</city><street>Mikhail-Scholl-Allee</street><country>Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Sylvester</first_name><last_name>Hübel</last_name></name><address><city>Eichstätt</city><street>Paulina-Ortmann-Allee</street><country>Deutschland</country></address></root>
+<?xml version="1.0" encoding="UTF-8" ?><root><name><first_name>Sandy</first_name><last_name>Schulz</last_name></name><address><city>Freudenstadt</city><street>Felicia-Hermighausen-Gasse</street><country>Deutschland</country></address></root>
 
 ```
 
@@ -377,7 +391,7 @@ val zipFileRDD2 = sc.textFile("/tmp/gzip")
 _Result:_
 
 ```
-zipFileRDD2: org.apache.spark.rdd.RDD[String] = /tmp/gzip MapPartitionsRDD[56] at textFile at <console>:42
+zipFileRDD2: org.apache.spark.rdd.RDD[String] = /tmp/gzip MapPartitionsRDD[84] at textFile at <console>:49
 
 ```
 
@@ -392,14 +406,15 @@ _Input:_
 val df2 = zipFileRDD2.flatMap { _.split("\n") }
                      .map(parseXML)
                      .toDF
-                   
+df.count
 ```
 
 
 _Result:_
 
 ```
-df2: org.apache.spark.sql.DataFrame = [first_name: string, name: string, street: string, city: string, country: string]
+df2: org.apache.spark.sql.DataFrame = [first_name: string, last_name: string, street: string, city: string, country: string]
+res64: Long = 90000
 
 ```
 
@@ -417,20 +432,20 @@ df2.show(10)
 _Result:_
 
 ```
-+------------+--------------------+--------------------+----------+-----------+
-|  first_name|                name|              street|      city|    country|
-+------------+--------------------+--------------------+----------+-----------+
-|Heinz Dieter|       Antonino Döhn|Erich-Roskoth-Straße|  Iserlohn|Deutschland|
-|       Marta|         Hedy Kobelt|  Slavko-Karge-Gasse|      Jena|Deutschland|
-|      Amalia|Sibylle Jacobi Jä...|Teresa-Meister-Allee| Böblingen|Deutschland|
-|      Gerwin|   Pauline Kade B.A.|  Niels-Winkler-Ring|Biedenkopf|Deutschland|
-|        Ines|Norma Binner-Margraf|           Meyerring|   Wolgast|Deutschland|
-|     Cynthia|       Emmerich Metz|  Sandy-Atzler-Allee|  Grafenau|Deutschland|
-|   Felicitas|Frau Cosima Döhn ...|Brunhilde-Naser-Ring| Gadebusch|Deutschland|
-|    Hannchen|Ulrike Bender-Sei...|Frida-Möchlichen-...|    Döbeln|Deutschland|
-|    Frithjof| Niklas Linke B.Eng.|         Lindauplatz| Sternberg|Deutschland|
-|     Chantal|Heinfried Roskoth...|Dorothee-Rosemann...|  Burgdorf|Deutschland|
-+------------+--------------------+--------------------+----------+-----------+
++----------+-----------+--------------------+--------------+-----------+
+|first_name|  last_name|              street|          city|    country|
++----------+-----------+--------------------+--------------+-----------+
+| Constance|     Schaaf|  Carmine-Löchel-Weg|Neubrandenburg|Deutschland|
+|   Rosalie|      Lorch|         Schachtring|       Rastatt|Deutschland|
+|       Max|    Radisch|      Ditschlerinweg|    Nordhausen|Deutschland|
+|     Ahmed|    Heintze|      Cichoriusgasse|        Amberg|Deutschland|
+|   Antonia|      Gunpf| Kreszentia-Bähr-Weg|     Warendorf|Deutschland|
+|     Janko|  Christoph|Jonas-Röhrdanz-Allee|    Gelnhausen|Deutschland|
+|    Ottmar|     Seidel|Ernestine-Hornich...|     Wunsiedel|Deutschland|
+|   Mattias|Wagenknecht|         Kästergasse|      Arnstadt|Deutschland|
+|    Marika|    Scholtz|       Benthinstraße|       Ilmenau|Deutschland|
+|     Jobst|      Rogge|           Zimmerweg|   Sigmaringen|Deutschland|
++----------+-----------+--------------------+--------------+-----------+
 only showing top 10 rows
 
 
