@@ -8,6 +8,7 @@
 
 ---
 
+scala
 #### As always, check the Spark version
 
 _Input:_
@@ -27,6 +28,7 @@ res47: String = 1.6.2
 
 ---
 
+markdown
 # 1) ZIP compressed data
 
 ZIP compression format is not splittable and there is no default input format defined in Hadoop. To read ZIP files, Hadoop needs to be informed that it this file type is not splittable and needs an appropriate record reader, see [Hadoop: Processing ZIP files in Map/Reduce](http://cutler.io/2012/07/hadoop-processing-zip-files-in-mapreduce/).
@@ -38,6 +40,7 @@ Test data can be created with `data/create-data.sh`
 
 ---
 
+sh
 #### Six zip files containing XML records are placed below /tmp/zip
 
 _Input:_
@@ -88,6 +91,7 @@ XML records:
 
 ---
 
+sh
 #### Empty the results folder
 
 _Input:_
@@ -101,6 +105,7 @@ hdfs dfs -mkdir /tmp/results
 
 ---
 
+scala
 #### Import all necessary symbols
 
 _Input:_
@@ -130,6 +135,7 @@ import scala.xml.XML
 
 ---
 
+scala
 #### Parse an XML record and return it as a scala case class instance
 
 _Input:_
@@ -161,6 +167,7 @@ parseXML: (xmlStr: String)Person
 
 ---
 
+scala
 #### Read all zip files into an RDD ... 
 
 _Input:_
@@ -184,6 +191,7 @@ zipFileRDD: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[62] at map at <c
 
 ---
 
+scala
 #### ... and parse them into a DataFrame using the case class
 
 _Input:_
@@ -207,6 +215,7 @@ res53: Long = 90000
 
 ---
 
+scala
 #### Show the result
 
 _Input:_
@@ -241,6 +250,7 @@ only showing top 10 rows
 
 ---
 
+scala
 #### Save the records as ORC and as Parquet files
 
 _Input:_
@@ -254,6 +264,7 @@ df.write.format("parquet").save("/tmp/results/people.parquet")
 
 ---
 
+sh
 #### According to the number of partitions in Spark several files will be created by Spark
 
 _Input:_
@@ -285,6 +296,7 @@ Found 6 items
 
 ---
 
+scala
 #### Now repartition the DataFrame and store it again as ORC and Parquet
 
 _Input:_
@@ -298,6 +310,7 @@ _Input:_
 
 ---
 
+sh
 #### There is one content file per saved ORC or Parquet folder in HDFS now
 
 _Input:_
@@ -326,20 +339,16 @@ Found 4 items
 
 ---
 
+markdown
 
-_Input:_
-
-```scala
-%spark
-%md
 # 2) GZIP compressed data
 
 For gzip compressed data a default File input Format exists in Hadoop
-```
 
 
 ---
 
+sh
 
 _Input:_
 
@@ -378,6 +387,7 @@ XML records:
 
 ---
 
+scala
 #### Read all gzip files into an RDD ...
 
 _Input:_
@@ -397,6 +407,7 @@ zipFileRDD2: org.apache.spark.rdd.RDD[String] = /tmp/gzip MapPartitionsRDD[84] a
 
 ---
 
+scala
 #### ... and (as above for zip files) parse them into a DataFrame using the case class
 
 _Input:_
@@ -420,6 +431,7 @@ res64: Long = 90000
 
 ---
 
+scala
 
 _Input:_
 
@@ -453,6 +465,7 @@ only showing top 10 rows
 
 ---
 
+markdown
 
 # Appendix) Add ZipFileInputFormat to HDP 2.5
 
