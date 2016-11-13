@@ -1,10 +1,10 @@
-This Readme has been automatically created by [zepppelin2md.py](https://github.com/bernhard-42/zeppelin2md).
+>**Note:**
+>This Readme has been automatically created by [zepppelin2md.py](https://github.com/bernhard-42/zeppelin2md).
 
-Alternatively open the Zeppelin Notebook json file (spark-unzip.json) with [Zeppelin Hub Viewer](https://www.zeppelinhub.com/viewer):
+>Alternatively, to open the Zeppelin Notebook with [Zeppelin Viewer](https://www.zeppelinhub.com/viewer) use the URL 
+>    `https://raw.githubusercontent.com/bernhard-42/spark-unzip/master/spark-unzip.json`
 
-- click on spark-unzip.json
-- click on RAW
-- copy URL to into Zeppelin Hub Viewer
+# spark-unzip.json
 
 ---
 
